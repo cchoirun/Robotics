@@ -1,0 +1,48 @@
+#include <iostream>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+Mat baca, mask, imgCanny, imgHSV;
+
+int main() {
+
+    int hmin = 0, smin = 160, vmin = 114;
+    int hmax = 16, smax = 255, vmax = 255;
+    String gambar = "C:\\Users\\acer\\Documents\\arduino\\bola.mp4";
+    VideoCapture cap(gambar);
+   
+
+    namedWindow("Trackbars", (640, 200));
+    createTrackbar("Hue Min", "Trackbars", &hmin, 179);
+    createTrackbar("Hue Max", "Trackbars", &hmax, 179);
+    createTrackbar("Sat Min", "Trackbars", &smin, 255);
+    createTrackbar("Sat Max", "Trackbars", &smax, 255);
+    createTrackbar("Val Min", "Trackbars", &vmin, 255);
+    createTrackbar("Val Max", "Trackbars", &vmax, 255);
+
+
+    for (;;) {
+
+        Scalar lower(hmin, smin, vmin);
+        Scalar upper(hmax, smax, vmax);
+
+        cap >> baca;
+
+        cvtColor(baca, imgHSV, COLOR_BGR2HSV);
+        Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+        inRange(imgHSV, lower, upper, mask);
+        Canny(mask, imgCanny, 25, 75);
+
+        imshow("normal", baca);
+        imshow("hsv", imgHSV);
+        imshow("Mask", mask);
+        
+        
+
+        waitKey(100);
+    }
+
+}
