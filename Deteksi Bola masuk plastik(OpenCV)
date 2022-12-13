@@ -1,0 +1,87 @@
+
+#include <iostream>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+//Fungsi buat dapetin contour paling gede
+int getMaxAreaContourId(vector <vector<Point>> contours) {
+    double maxArea = 0;
+    int maxAreaContour = -1;
+    for (int j = 0; j < contours.size(); j++) {
+        double newArea = contourArea(contours.at(j));
+        if (newArea > maxArea) {
+            maxArea = newArea;
+            maxAreaContour = j;
+        } 
+    }
+    return maxAreaContour;
+}
+
+
+Mat baca, mask, mask2, imgHSV;
+int main()
+{
+    int hmin = 0, smin = 11, vmin = 101; int hmin2 = 0, smin2 = 0, vmin2 = 0; //Untuk batas bawah HSV bola dan plastik
+    int hmax = 16, smax = 255, vmax = 255; int hmax2 = 179, smax2 = 99, vmax2 = 255; //Untuk batas atas 
+    String gambar = "C:\\Users\\acer\\Documents\\arduino\\bola.mp4";
+    VideoCapture cap(gambar);
+    
+
+    while (true) {
+        cap >> baca;
+        Scalar lower(hmin, smin, vmin);Scalar lower2(hmin2, smin2, vmin2);
+        Scalar upper(hmax, smax, vmax);Scalar upper2(hmax2, smax2, vmax2);
+        vector <vector<Point>> contours; vector <vector<Point>> contours2;
+        vector <Vec4i> hierarchy;vector <Vec4i> hierarchy2;
+        Mat kernel = getStructuringElement(MORPH_RECT, Size(2, 3));
+
+     
+        
+        cvtColor(baca, imgHSV, COLOR_BGR2HSV);
+        inRange(imgHSV, lower, upper, mask);
+        inRange(imgHSV, lower2, upper2, mask2);
+        
+        findContours(mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); // nyari kontur bola
+        findContours(mask2, contours2, hierarchy2, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); // nyari kontur plastik
+        
+        for (int i = 0; i < contours.size(); i++) {
+
+            RotatedRect y = minAreaRect(contours[i]);
+
+            if (contourArea(contours[i]) > 500) // Buat gambar kontur bola terbesar
+            {
+                drawContours(baca, contours, (int)i, Scalar(0, 255, 255), 2, LINE_8, hierarchy, 0);
+            }
+        }
+        
+        for (int i = 0; i < contours2.size(); i++) {
+
+            if (contourArea(contours2[i]) > 4000) // Buat gambar kontur plastik terbesar
+            {
+                drawContours(baca, contours2, (int)i, Scalar(255, 0, 255), 2, LINE_8, hierarchy2, 0);
+            }
+        } 
+        //Buat gambar kotak disekitar kontur
+        Rect bola = boundingRect(contours.at(getMaxAreaContourId(contours)));
+        Rect plastik = boundingRect(contours2.at(getMaxAreaContourId(contours2)));
+        RotatedRect y = minAreaRect(contours.at(getMaxAreaContourId(contours)));
+
+        Point bola_atas = bola.tl(); 
+        Point plastik_bwh = plastik.br();
+        Point bola_tgh = y.center;
+
+        // Kondisi untuk mengeluarkan tulisan saat bola masuk plastik
+        if (bola.area() > 2000 && plastik.area() > 4000) {
+            if (bola_tgh.x >= plastik.x && bola_tgh.y >= plastik.y && bola_tgh.x <= plastik_bwh.x && bola_tgh.y <= plastik_bwh.y ) {
+                putText(baca, "Bola masuk plastik", bola_atas, FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255, 0, 0), 0.8);
+            }
+        }
+
+        imshow("bola", baca);
+        waitKey(10);
+    }
+    return 0;
+}
